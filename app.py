@@ -358,7 +358,7 @@ class QuizApp:
 
         pron_index = 0
         if mood == "Imperative (أمر)":
-            pron_index = random.randrange(6) + 5
+            pron_index = random.randrange(6) + 6
         else:
             pron_index = random.randrange(14)
 
@@ -450,7 +450,7 @@ class QuizApp:
 
         pron_a = 0
         if mood_a == "Imperative (أمر)":
-            pron_a = random.randrange(6) + 5
+            pron_a = random.randrange(6) + 6
         else:
             pron_a = random.randrange(14)
 
