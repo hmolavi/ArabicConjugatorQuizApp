@@ -73,7 +73,7 @@ PRONOUNS = [
     ("2nd dual", "أنتما"),
     ("2nd masc pl", "أنتم"),
     ("2nd fem sing", "أنتِ"),
-    # ("2nd dual", "أنتما"),
+    ("2nd dual", "أنتما"),
     ("2nd fem pl", "أنتنّ"),
     ("1st sing", "أنا"),
     ("1st pl", "نحن"),
@@ -179,7 +179,7 @@ class QuizApp:
 
     def next_question(self):
         # pick a random style
-        style = random.choice([1, 2, 3, 4])
+        style = 2 # random.choice([1, 2, 3, 4])
         self.current_style = style
         if style == 1:
             q = self.make_style1()
