@@ -248,22 +248,14 @@ class QuizApp:
             self.total += 1
             if chosen_text == correct:
                 self.score += 1
-                self.option_buttons[chosen_idx].config(bg="#a6f3a6")
-            else:
-                self.option_buttons[chosen_idx].config(bg="#f3a6a6")
-                # highlight correct
-                for i, opt in enumerate(self.shown_options):
-                    if opt == correct:
-                        self.option_buttons[i].config(bg="#a6f3f3")
+
+        if chosen_text == correct:
+            self.option_buttons[chosen_idx].config(bg="#a6f3a6")
         else:
-            # scoring disabled: show feedback but don't change numbers
-            if chosen_text == correct:
-                self.option_buttons[chosen_idx].config(bg="#a6f3a6")
-            else:
-                self.option_buttons[chosen_idx].config(bg="#f3a6a6")
-                for i, opt in enumerate(self.shown_options):
-                    if opt == correct:
-                        self.option_buttons[i].config(bg="#a6f3f3")
+            self.option_buttons[chosen_idx].config(bg="#f3a6a6")
+            for i, opt in enumerate(self.shown_options):
+                if opt == correct:
+                    self.option_buttons[i].config(bg="#a6f3a6")
         # disable buttons until Next
         for b in self.option_buttons:
             b.config(state=tk.DISABLED)
