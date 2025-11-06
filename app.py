@@ -58,7 +58,6 @@ SAMPLE_VERBS = [
     {"verb": "كَرُمَ", "bab": "Damma/Damma (كَرُمَ / يَكْرُمُ)"},
     {"verb": "حَسِبَ", "bab": "Kasra/Kasra (حَسِبَ / يَحْسِبُ)"},
     {"verb": "قَرَأَ", "bab": "Fatha/Fatha (فَتَحَ / يَفْتَحُ)"},
-    {"verb": "أَكَلَ", "bab": "Fatha/Damma (نَصَرَ / يَنْصُرُ)"},
     {"verb": "دَخَلَ", "bab": "Fatha/Damma (نَصَرَ / يَنْصُرُ)"},
 ]
 
