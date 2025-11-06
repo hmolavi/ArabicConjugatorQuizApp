@@ -127,8 +127,8 @@ class QuizApp:
         self.option_vars = []
         self.option_buttons = []
         for i in range(4):
-            btn = tk.Button(self.buttons_frame, text=f"Option {i+1}", width=25, command=lambda i=i: self.check_answer(i))
-            btn.grid(row=i, column=0, pady=4)
+            btn = tk.Button(self.buttons_frame, text=f"Option {i+1}", width=25, height=2 , command=lambda i=i: self.check_answer(i))
+            btn.grid(row=i // 2, column=i % 2, padx=6, pady=4)
             self.option_buttons.append(btn)
 
         # Start with scoring shown as disabled (greyed out)
