@@ -179,7 +179,7 @@ class QuizApp:
 
     def next_question(self):
         # pick a random style
-        style = 2 # random.choice([1, 2, 3, 4])
+        style = random.choice([1, 2, 3, 4])
         self.current_style = style
         if style == 1:
             q = self.make_style1()
