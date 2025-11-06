@@ -456,7 +456,7 @@ class QuizApp:
             bab_a = verb_entry.get("bab")
             mood_a = random.choice([m[0] for m in (ac.MOODS)])
 
-        t_a, forms_a = safe_conjugate(verb, tense=tense_a, bab_key=bab_a, mood=mood_a)
+        _, forms_a = safe_conjugate(verb, tense=tense_a, bab_key=bab_a, mood=mood_a)
 
         pron_a = 0
         if mood_a == "Imperative (أمر)":
@@ -489,7 +489,7 @@ class QuizApp:
         d3 = alt_forms[pron_a]
 
         options = [correct, d1, d2, d3]
-        qtext = f"If the base verb of {conj_a} were conjugated in\n{tense_b.capitalize()} {mood_b if mood_b is not None else ''} {PRONOUNS[pron_a][0]}\nwhich one would it be?"
+        qtext = f"If the base verb of {conj_a} were conjugated in\n{tense_b.capitalize()}{" "+mood_b if mood_b is not None else ''} {PRONOUNS[pron_a][0]}\nwhich one would it be?"
         meta = f"Base verb: {verb}"
         return {"text": qtext, "meta": meta, "options": options, "correct": correct}
 
