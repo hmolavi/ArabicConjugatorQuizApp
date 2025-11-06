@@ -150,7 +150,7 @@ class QuizApp:
 
         # Font size selector: dropdown (readonly combobox)
         # Use a StringVar for the combobox and store numeric sizes as strings
-        self.font_size_var = tk.StringVar(value="14")
+        self.font_size_var = tk.StringVar(value="20")
         tk.Label(self.controls, text="Font size:").grid(row=0, column=3, padx=(6, 2))
         self.font_size_combo = ttk.Combobox(
             self.controls,
