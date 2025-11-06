@@ -105,6 +105,8 @@ class QuizApp:
 
         self.score = 0
         self.total = 0
+        # Scoring toggle: disabled by default
+        self.scoring_enabled = False
 
         # UI layout
         self.header = tk.Label(master, text="Arabic Conjugation Quiz", font=(None, 16))
@@ -125,11 +127,12 @@ class QuizApp:
         self.option_vars = []
         self.option_buttons = []
         for i in range(4):
-            btn = tk.Button(self.buttons_frame, text=f"Option {i+1}", width=36, command=lambda i=i: self.check_answer(i))
+            btn = tk.Button(self.buttons_frame, text=f"Option {i+1}", width=25, command=lambda i=i: self.check_answer(i))
             btn.grid(row=i, column=0, pady=4)
             self.option_buttons.append(btn)
 
-        self.status = tk.Label(master, text="Score: 0/0")
+        # Start with scoring shown as disabled (greyed out)
+        self.status = tk.Label(master, text="Score: 0/0", fg="gray")
         self.status.pack(pady=6)
 
         self.controls = tk.Frame(master)
@@ -137,6 +140,9 @@ class QuizApp:
 
         tk.Button(self.controls, text="Next", command=self.next_question).grid(row=0, column=0, padx=6)
         tk.Button(self.controls, text="Quit", command=master.quit).grid(row=0, column=1, padx=6)
+        # scoring toggle button (starts disabled)
+        self.score_button = tk.Button(self.controls, text="Enable Scoring", command=self.toggle_scoring)
+        self.score_button.grid(row=0, column=2, padx=6)
 
         # question generation state
         self.correct_index = None
@@ -146,7 +152,9 @@ class QuizApp:
         self.next_question()
 
     def update_status(self):
+        # Update the status text and color depending on whether scoring is enabled
         self.status.config(text=f"Score: {self.score}/{self.total}")
+        self.status.config(fg="black" if self.scoring_enabled else "gray")
 
     def next_question(self):
         # pick a random style
@@ -194,20 +202,50 @@ class QuizApp:
     def check_answer(self, chosen_idx):
         chosen_text = self.shown_options[chosen_idx]
         correct = self.current_answer
-        self.total += 1
-        if chosen_text == correct:
-            self.score += 1
-            self.option_buttons[chosen_idx].config(bg="#a6f3a6")
+        # Only update score/total when scoring is enabled. Always show feedback.
+        if self.scoring_enabled:
+            self.total += 1
+            if chosen_text == correct:
+                self.score += 1
+                self.option_buttons[chosen_idx].config(bg="#a6f3a6")
+            else:
+                self.option_buttons[chosen_idx].config(bg="#f3a6a6")
+                # highlight correct
+                for i, opt in enumerate(self.shown_options):
+                    if opt == correct:
+                        self.option_buttons[i].config(bg="#a6f3f3")
         else:
-            self.option_buttons[chosen_idx].config(bg="#f3a6a6")
-            # highlight correct
-            for i, opt in enumerate(self.shown_options):
-                if opt == correct:
-                    self.option_buttons[i].config(bg="#a6f3f3")
+            # scoring disabled: show feedback but don't change numbers
+            if chosen_text == correct:
+                self.option_buttons[chosen_idx].config(bg="#a6f3a6")
+            else:
+                self.option_buttons[chosen_idx].config(bg="#f3a6a6")
+                for i, opt in enumerate(self.shown_options):
+                    if opt == correct:
+                        self.option_buttons[i].config(bg="#a6f3f3")
         # disable buttons until Next
         for b in self.option_buttons:
             b.config(state=tk.DISABLED)
 
+        self.update_status()
+
+    def toggle_scoring(self):
+        """Enable or disable scoring. When enabling/disabling, reset counters to 0/0.
+
+        Default is disabled. Clicking toggles state and resets the score display.
+        """
+        if not self.scoring_enabled:
+            # enable scoring
+            self.scoring_enabled = True
+            self.score = 0
+            self.total = 0
+            self.score_button.config(text="Disable Scoring")
+        else:
+            # disable scoring and reset
+            self.scoring_enabled = False
+            self.score = 0
+            self.total = 0
+            self.score_button.config(text="Enable Scoring")
         self.update_status()
 
     # --- Question generation strategies ---
