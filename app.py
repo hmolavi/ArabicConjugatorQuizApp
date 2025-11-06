@@ -140,7 +140,7 @@ class QuizApp:
         self.status.pack(pady=6)
 
         self.controls = tk.Frame(master)
-        self.controls.pack()
+        self.controls.pack(pady=(6, 12))
 
         tk.Button(self.controls, text="Next", command=self.next_question).grid(row=0, column=0, padx=6)
         tk.Button(self.controls, text="Quit", command=master.quit).grid(row=0, column=1, padx=6)
