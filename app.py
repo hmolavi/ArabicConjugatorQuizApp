@@ -344,7 +344,9 @@ class QuizApp:
         """Show pronoun + base verb, ask for correct conjugation for that pronoun/tense/mood."""
         verb_entry = random.choice(SAMPLE_VERBS)
         verb = verb_entry["verb"]
-        tense = random.choice(["past", "present"])
+        tenses = ["present", "present", "past"]
+        # random.shuffle(tenses)
+        tense = tenses[0]
         bab_key = None
         mood = None
         # Use the verb's associated bab when present tense is used
@@ -352,27 +354,45 @@ class QuizApp:
             bab_key = verb_entry.get("bab")
             mood = random.choice([m[0] for m in (ac.MOODS)])
 
-        title, forms = safe_conjugate(verb, tense=tense, bab_key=bab_key, mood=mood)
-        pron_index = random.randrange(14)
+        _, forms = safe_conjugate(verb, tense=tense, bab_key=bab_key, mood=mood)
+
+        pron_index = 0
+        if mood == "Imperative (أمر)":
+            pron_index = random.randrange(6) + 5
+        else:
+            pron_index = random.randrange(14)
+
         correct = forms[pron_index]
 
-        # distractor 1: same verb different mood/tense
-        d1_title, d1_forms = safe_conjugate(
-            verb, tense=("present" if tense == "past" else "past"), bab_key=bab_key, mood=(None if mood else "Indicative (مرفوع)")
-        )
-        d1 = d1_forms[pron_index]
+        # All distractions are with the same verb but different mood/tense or different pronoun
+        # 3 different random pronouns, which if mood is imperative, must be in imperative range!
+        pronouns = list(range(14))
+        if mood == "Imperative (أمر)":
+            pronouns = [i for i in pronouns if 6 <= i <= 11]
+        random.shuffle(pronouns)
+        distractor_pronouns = pronouns[:3]
 
-        # distractor 2: similar pronoun (choose neighbor index)
-        neighbor = (pron_index + random.choice([-2, -1, 1, 2])) % 14
-        d2 = forms[neighbor]
+        # distractor 1: different mood/tense and different pronoun
+        ot_tense = tenses[1]
+        ot_mood = None
+        if ot_tense == "present":
+            ot_mood = random.choice([m[0] for m in (ac.MOODS) if m[0] != mood])
+        _, d1_forms = safe_conjugate(verb, tense=ot_tense, bab_key=bab_key, mood=ot_mood)
+        d1 = d1_forms[distractor_pronouns[0]]
 
-        # distractor 3: same pronoun/tensen but different verb
-        other_entry = random.choice([e for e in SAMPLE_VERBS if e["verb"] != verb])
-        ot_title, ot_forms = safe_conjugate(other_entry["verb"], tense=tense, bab_key=other_entry.get("bab"), mood=mood)
-        d3 = ot_forms[pron_index]
+        # distractor 2: different mood/tense and different pronoun
+        otot_tense = tenses[2]
+        otot_mood = None
+        if otot_tense == "present":
+            otot_mood = random.choice([m[0] for m in (ac.MOODS) if m[0] != mood])
+        _, ot_forms = safe_conjugate(verb, tense=otot_tense, bab_key=bab_key, mood=otot_mood)
+        d2 = ot_forms[pron_index]
+
+        # distractor 3: same tense/mood different pronoun
+        d3 = forms[distractor_pronouns[2]]
 
         options = [correct, d1, d2, d3]
-        qtext = f"Select the correct conjugation for pronoun: {PRONOUNS[pron_index][0]} ({PRONOUNS[pron_index][1]})\nBase verb: {verb}"
+        qtext = f"Select the correct conjugation for {PRONOUNS[pron_index][0]} ({PRONOUNS[pron_index][1]})\nBase verb: {verb}"
         meta = f"Tense: {tense}  Mood: {mood or '—'}"
         return {"text": qtext, "meta": meta, "options": options, "correct": correct}
 
