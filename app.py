@@ -405,20 +405,22 @@ class QuizApp:
         bab_key = None
         mood = None
         if tense == "present":
-            # use the verb's bab
             bab_key = verb_entry.get("bab")
             mood = random.choice([m[0] for m in (ac.MOODS)])
 
-        title, forms = safe_conjugate(verb, tense=tense, bab_key=bab_key, mood=mood)
-        pron = random.randrange(14)
+        _, forms = safe_conjugate(verb, tense=tense, bab_key=bab_key, mood=mood)
+        pron = 0
+        if mood == "Imperative (أمر)":
+            pron = random.randrange(6) + 6
+        else:
+            pron = random.randrange(14)
+
         conj = forms[pron]
 
         # options: different tense/mood combos
-        candidates = []
-        candidates.append((tense, mood))
         # add three distractors
         distracts = []
-        distract_tenses = [("past", None), ("present", "Indicative (مرفوع)"), ("present", "Subjunctive (منصوب)"), ("present", "Jussive (مجزوم)")]
+        distract_tenses = [("past", None)] + [("present", m[0]) for m in (ac.MOODS)]
         random.shuffle(distract_tenses)
         for t, m in distract_tenses:
             if (t, m) != (tense, mood) and len(distracts) < 3:
@@ -429,8 +431,8 @@ class QuizApp:
             label = t if m is None else f"{t} - {m}"
             options.append(label)
 
-        qtext = f"Which tense/mood is this conjugated form?\n\n{conj}"
-        meta = f"Pronoun: {PRONOUNS[pron][0]} ({PRONOUNS[pron][1]})  Base verb hidden"
+        qtext = f"Which tense/mood is this conjugated form?\n{conj}"
+        meta = f"Pronoun: {PRONOUNS[pron][0]} ({PRONOUNS[pron][1]}) Base verb: {verb}"
         correct_label = tense if mood is None else f"{tense} - {mood}"
         return {"text": qtext, "meta": meta, "options": options, "correct": correct_label}
 
