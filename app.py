@@ -210,7 +210,15 @@ class QuizApp:
             self.hint_button.pack_forget()
         except Exception:
             pass
+        # Pack the hint button in the same location and force a redraw to avoid
+        # a race where the button doesn't become visible until another UI event.
         self.hint_button.pack()
+        try:
+            # bring to top and force geometry update
+            self.hint_button.lift()
+            self.question_frame.update_idletasks()
+        except Exception:
+            pass
 
         opts = q.get("options", [])
         # Store formatted correct answer for comparison
