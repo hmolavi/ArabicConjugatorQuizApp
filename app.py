@@ -441,14 +441,13 @@ class QuizApp:
 
         options = [correct, d1, d2, d3]
         qtext = f"Select the correct conjugation for {PRONOUNS[pron_index][0]} ({PRONOUNS[pron_index][1]})\nBase verb: {verb}"
-        meta = f"Tense: {tense}  Mood: {mood or '—'}"
+        meta = f"{tense.capitalize()}{" "+mood if mood is not None else ''}"
         return {"text": qtext, "meta": meta, "options": options, "correct": correct}
 
     def make_style2(self):
         """Show a conjugated form; ask which tense/mood it is (4 choices)."""
         verb_entry = random.choice(SAMPLE_VERBS)
         verb = verb_entry["verb"]
-        # pick either past or present
         tense = random.choice(["past", "present"])
         bab_key = None
         mood = None
