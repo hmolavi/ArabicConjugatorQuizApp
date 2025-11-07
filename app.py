@@ -81,6 +81,7 @@ PRONOUNS = [
 
 UNIQUE_PRONOUNS_IDX = [0, 1, 2, 3, 5, 6, 7, 8, 9, 11, 12, 13]  # excludes duplicates: 7=10, 1=4
 
+
 def safe_conjugate(verb, tense="past", bab_key=None, mood=None, reverse_input=False):
     """Wrapper that calls the package's conjugate_verb and returns (title, forms).
 
@@ -388,7 +389,7 @@ class QuizApp:
         """Show pronoun + base verb, ask for correct conjugation for that pronoun/tense/mood."""
         verb_entry = random.choice(SAMPLE_VERBS)
         verb = verb_entry["verb"]
-        tenses = ["present", "present", "past"] #4th option is always same as correct answer tense/mood
+        tenses = ["present", "present", "past"]  # 4th option is always same as correct answer tense/mood
         moods = [m[0] for m in (ac.MOODS)]
         random.shuffle(tenses)
         random.shuffle(moods)
@@ -413,7 +414,7 @@ class QuizApp:
         # All distractions are with the same verb but different mood/tense and different pronoun
         # 3 different random pronouns, which if mood is imperative, must be in imperative range!
         pronouns = UNIQUE_PRONOUNS_IDX.copy()
-        pronouns.remove(pron_index)            
+        pronouns.remove(pron_index)
         if mood == "Imperative (أمر)":
             pronouns = [i for i in pronouns if 6 <= i <= 11]
         random.shuffle(pronouns)
@@ -483,6 +484,7 @@ class QuizApp:
             if (t, m) != (tense, mood) and len(distracts) < 3:
                 distracts.append((t.capitalize(), m))
 
+        # Add correct answer first, then distractors
         options = []
         for t, m in [(tense.capitalize(), mood)] + distracts[:3]:
             label = t if m is None else f"{t} - {m}"
@@ -494,20 +496,30 @@ class QuizApp:
         return {"text": qtext, "meta": meta, "options": options, "correct": correct_label}
 
     def make_style3(self):
-        """Given a verb conjugation, ask: if base verb were conjugated for new (tense/mood/pronoun), which would it be?"""
+        """Given a verb conjugation, ask: if base verb were conjugated for new (tense/mood) but same pronoun, which would it be?"""
         verb_entry = random.choice(SAMPLE_VERBS)
         verb = verb_entry["verb"]
-        tense_a = random.choice(["past", "present"])
+
+        tenses = ["present", "past"]
+        moods = [m[0] for m in (ac.MOODS)]
+        random.shuffle(tenses)
+        random.shuffle(moods)
+
+        # Helper: canonicalize pron index to unique set mapping
+        def canon_pron(idx):
+            return {4: 1, 10: 7}.get(idx, idx)
+
+        # Source (given) settings
+        tense_a = tenses[0]
         mood_a = None
         bab_a = None
         if tense_a == "present":
-            # use the verb's bab for present
             bab_a = verb_entry.get("bab")
-            mood_a = random.choice([m[0] for m in (ac.MOODS)])
+            mood_a = moods[0]
 
         _, forms_a = safe_conjugate(verb, tense=tense_a, bab_key=bab_a, mood=mood_a)
 
-        pron_a = 0
+        # pick a valid pronoun index for the given form
         if mood_a == "Imperative (أمر)":
             pron_a = random.randrange(6) + 6
         else:
@@ -515,31 +527,95 @@ class QuizApp:
 
         conj_a = forms_a[pron_a]
 
-        # target settings
-        tense_b = random.choice(["past", "present"])
-        mood_b = None
-        bab_b = None
-        if tense_b == "present":
-            # target present uses the same verb's bab (no random bab selection)
-            bab_b = verb_entry.get("bab")
-            mood_b = random.choice([m[0] for m in (ac.MOODS)])
+        # Target settings (the user is asked to map to this tense/mood with same pronoun)
+        def pick_target():
+            tb = random.choice(["past", "present"])
+            mb = None
+            bb = None
+            if tb == "present":
+                bb = verb_entry.get("bab")
+                mb = random.choice(moods)
+            # If target is imperative but pron not allowed, re-pick a non-imperative mood
+            if mb == "Imperative (أمر)" and not (6 <= pron_a <= 11):
+                # choose another non-imperative mood
+                non_imp = [m for m in moods if m != "Imperative (أمر)"]
+                if non_imp:
+                    mb = random.choice(non_imp)
+                else:
+                    tb, mb, bb = "past", None, None
+            return tb, mb, bb
 
+        tense_b, mood_b, bab_b = pick_target()
         _, forms_b = safe_conjugate(verb, tense=tense_b, bab_key=bab_b, mood=mood_b)
         correct = forms_b[pron_a]
 
-        # three distractors: (1) same verb different pronoun, (2) different verb same target, (3) same pronunciation but different mood
-        d1 = forms_b[(pron_a + 1) % 14]
-        other_entry = random.choice([e for e in SAMPLE_VERBS if e["verb"] != verb])
-        _, other_forms = safe_conjugate(other_entry["verb"], tense=tense_b, bab_key=other_entry.get("bab"), mood=mood_b)
-        d2 = other_forms[pron_a]
-        # different mood/tense
-        alt_t = "past" if tense_b == "present" else "present"
-        _, alt_forms = safe_conjugate(verb, tense=alt_t, bab_key=bab_b, mood=mood_b)
-        d3 = alt_forms[pron_a]
+        # Build distractors ensuring uniqueness and valid pronoun ranges
+        # Start from unique pronoun indices
+        pron_pool = UNIQUE_PRONOUNS_IDX.copy()
+        # Filter pool for imperative target (only 2nd person)
+        if mood_b == "Imperative (أمر)":
+            pron_pool = [i for i in pron_pool if 6 <= i <= 11]
+        # Remove the canonical equivalent of pron_a if present
+        can = canon_pron(pron_a)
+        if can in pron_pool:
+            pron_pool.remove(can)
+        random.shuffle(pron_pool)
+
+        # d1: same tense/mood as target, different pronoun
+        d1_pron = pron_pool.pop(0)
+        d1 = forms_b[d1_pron]
+
+        # Prepare a list of alternative (tense, mood, bab) combos distinct from target
+        all_combos = [("past", None)] + [("present", m) for m in moods]
+        # remove current combo
+        all_combos = [c for c in all_combos if c != (tense_b, mood_b)]
+        random.shuffle(all_combos)
+
+        def make_distractor_from_combo(pron_pool_local):
+            # find a combo and pronoun pair that is valid
+            for tb, mb in all_combos:
+                bb = None
+                if tb == "present":
+                    bb = verb_entry.get("bab")
+                # choose a pronoun valid for this combo
+                candidates = pron_pool_local
+                if mb == "Imperative (أمر)":
+                    candidates = [p for p in pron_pool_local if 6 <= p <= 11]
+                if not candidates:
+                    continue
+                chosen_pron = candidates[0]
+                _, fr = safe_conjugate(verb, tense=tb, bab_key=bb, mood=mb)
+                return fr[chosen_pron], chosen_pron, (tb, mb)
+            # Fallback: if nothing valid (shouldn't happen), reuse a different pron with current target
+            if pron_pool_local:
+                p = pron_pool_local[0]
+                return forms_b[p], p, (tense_b, mood_b)
+            # Last resort, return the correct (will be deduped later by shuffling)
+            return correct, can, (tense_b, mood_b)
+
+        # d2: pick a different (tense/mood), different pronoun
+        d2, d2_pron, d2_combo = make_distractor_from_combo(pron_pool)
+        if d2_pron in pron_pool:
+            pron_pool.remove(d2_pron)
+
+        # Exclude the combo used for d2 to increase variety
+        all_combos = [c for c in all_combos if c != d2_combo]
+
+        # d3: another different (tense/mood), different pronoun
+        d3, d3_pron, _ = make_distractor_from_combo(pron_pool)
+        if d3_pron in pron_pool:
+            try:
+                pron_pool.remove(d3_pron)
+            except ValueError:
+                pass
 
         options = [correct, d1, d2, d3]
-        qtext = f"If the base verb of {conj_a} were conjugated in\n{tense_b.capitalize()}{" "+mood_b if mood_b is not None else ''}(same pronoun)\nwhich one would it be?"
-        meta = f"Base verb: {verb}, {PRONOUNS[pron_a][0]}"
+        qtext = (
+            f"If the base verb of {conj_a} were conjugated in\n"
+            f"{tense_b.capitalize()}{' ' + mood_b if mood_b is not None else ''} (same pronoun)\n"
+            f"which one would it be?"
+        )
+        meta = f"{PRONOUNS[canon_pron(pron_a)][0]} ({PRONOUNS[canon_pron(pron_a)][1]}), base verb: {verb}"
 
         return {"text": qtext, "meta": meta, "options": options, "correct": correct}
 
