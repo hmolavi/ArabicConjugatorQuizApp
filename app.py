@@ -529,11 +529,8 @@ class QuizApp:
         d3 = alt_forms[pron_a]
 
         options = [correct, d1, d2, d3]
-        qtext = f"If the base verb of {conj_a} were conjugated in\n{tense_b.capitalize()}{" "+mood_b if mood_b is not None else ''} {PRONOUNS[pron_a][0]}\nwhich one would it be?"
-        meta = f"Base verb: {verb}"
-
-        if pron_a == 0:  # lolz
-            meta = "C'mon, you should know this one!"
+        qtext = f"If the base verb of {conj_a} were conjugated in\n{tense_b.capitalize()}{" "+mood_b if mood_b is not None else ''}\nwhich one would it be?"
+        meta = f"Base verb: {verb}, {PRONOUNS[pron_a][0]}"
 
         return {"text": qtext, "meta": meta, "options": options, "correct": correct}
 
