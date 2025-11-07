@@ -136,7 +136,7 @@ class QuizApp:
             self.option_buttons.append(btn)
 
         # Start with scoring shown as disabled (greyed out)
-        self.status = tk.Label(master, text="Score: 0 / 0", fg="gray")
+        self.status = tk.Label(master, text="Score: 0 / 0", fg=self.master.cget("bg"))
         self.status.pack(pady=6)
 
         self.controls = tk.Frame(master)
