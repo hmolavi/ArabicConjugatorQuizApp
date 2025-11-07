@@ -415,7 +415,7 @@ class QuizApp:
         if otot_tense == "present":
             otot_mood = random.choice([m[0] for m in (ac.MOODS) if m[0] != mood])
         _, ot_forms = safe_conjugate(verb, tense=otot_tense, bab_key=bab_key, mood=otot_mood)
-        d2 = ot_forms[pron_index]
+        d2 = ot_forms[distractor_pronouns[1]]
 
         # distractor 3: same tense/mood different pronoun
         d3 = forms[distractor_pronouns[2]]
