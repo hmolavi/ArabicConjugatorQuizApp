@@ -471,10 +471,10 @@ class QuizApp:
         random.shuffle(distract_tenses)
         for t, m in distract_tenses:
             if (t, m) != (tense, mood) and len(distracts) < 3:
-                distracts.append((t, m))
+                distracts.append((t.capitalize(), m))
 
         options = []
-        for t, m in [(tense, mood)] + distracts[:3]:
+        for t, m in [(tense.capitalize(), mood)] + distracts[:3]:
             label = t if m is None else f"{t} - {m}"
             options.append(label)
 
@@ -555,7 +555,7 @@ class QuizApp:
             options.append(v["verb"])
 
         correct = verb
-        qtext = f"Which base verb produced this conjugation?\n\n{conj}"
+        qtext = f"Which base verb produced this conjugation?\n{conj}"
         meta = f"Pronoun: {PRONOUNS[pron][0]}  Tense: {tense}"
         return {"text": qtext, "meta": meta, "options": options, "correct": correct}
 
