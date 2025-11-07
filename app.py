@@ -197,7 +197,7 @@ class QuizApp:
 
     def next_question(self):
         # pick a random style
-        style = random.choice([1, 2, 3, 4])
+        style = 3  # random.choice([1, 2, 3, 4])
         self.current_style = style
         if style == 1:
             q = self.make_style1()
@@ -207,6 +207,7 @@ class QuizApp:
             q = self.make_style3()
         else:
             q = self.make_style_extra()
+        # question idea: conjugated verb, ask for pronoun (meta being the tense/mood)
 
         self.display_question(q)
 
@@ -509,107 +510,127 @@ class QuizApp:
         def canon_pron(idx):
             return {4: 1, 10: 7}.get(idx, idx)
 
-        # Source (given) settings
-        tense_a = tenses[0]
-        mood_a = None
-        bab_a = None
-        if tense_a == "present":
-            bab_a = verb_entry.get("bab")
-            mood_a = moods[0]
-
-        _, forms_a = safe_conjugate(verb, tense=tense_a, bab_key=bab_a, mood=mood_a)
-
-        # pick a valid pronoun index for the given form
-        if mood_a == "Imperative (أمر)":
-            pron_a = random.randrange(6) + 6
-        else:
-            pron_a = random.randrange(14)
-
-        conj_a = forms_a[pron_a]
-
-        # Target settings (the user is asked to map to this tense/mood with same pronoun)
-        def pick_target():
+        # 1) Pick TARGET first (so we can include "None" when Imperative)
+        def pick_target_first():
             tb = random.choice(["past", "present"])
             mb = None
             bb = None
             if tb == "present":
-                bb = verb_entry.get("bab")
                 mb = random.choice(moods)
-            # If target is imperative but pron not allowed, re-pick a non-imperative mood
-            if mb == "Imperative (أمر)" and not (6 <= pron_a <= 11):
-                # choose another non-imperative mood
-                non_imp = [m for m in moods if m != "Imperative (أمر)"]
-                if non_imp:
-                    mb = random.choice(non_imp)
-                else:
-                    tb, mb, bb = "past", None, None
+                bb = verb_entry.get("bab")
             return tb, mb, bb
 
-        tense_b, mood_b, bab_b = pick_target()
+        tense_b, mood_b, bab_b = pick_target_first()
         _, forms_b = safe_conjugate(verb, tense=tense_b, bab_key=bab_b, mood=mood_b)
-        correct = forms_b[pron_a]
 
-        # Build distractors ensuring uniqueness and valid pronoun ranges
-        # Start from unique pronoun indices
+        # 2) Build the GIVEN conjugation (source), independent of target
+        tense_a = random.choice(["past", "present"])
+        mood_a = None
+        bab_a = None
+        if tense_a == "present":
+            bab_a = verb_entry.get("bab")
+            mood_a = random.choice(moods)
+        _, forms_a = safe_conjugate(verb, tense=tense_a, bab_key=bab_a, mood=mood_a)
+
+        if mood_a == "Imperative (أمر)":
+            pron_a = random.randrange(6, 12)  # 6..11 inclusive
+        else:
+            pron_a = random.randrange(14)
+        conj_a = forms_a[pron_a]
+
+        # 3) Determine correctness and generate options
+        is_imp_target = mood_b == "Imperative (أمر)"
+        valid_for_target = (not is_imp_target) or (6 <= pron_a <= 11)
+
+        # Build pronoun pool based on target
         pron_pool = UNIQUE_PRONOUNS_IDX.copy()
-        # Filter pool for imperative target (only 2nd person)
-        if mood_b == "Imperative (أمر)":
+        if is_imp_target:
             pron_pool = [i for i in pron_pool if 6 <= i <= 11]
-        # Remove the canonical equivalent of pron_a if present
         can = canon_pron(pron_a)
         if can in pron_pool:
             pron_pool.remove(can)
         random.shuffle(pron_pool)
 
-        # d1: same tense/mood as target, different pronoun
-        d1_pron = pron_pool.pop(0)
-        d1 = forms_b[d1_pron]
-
-        # Prepare a list of alternative (tense, mood, bab) combos distinct from target
+        # Prepare alternative (tense, mood) combos distinct from target for variety
         all_combos = [("past", None)] + [("present", m) for m in moods]
-        # remove current combo
         all_combos = [c for c in all_combos if c != (tense_b, mood_b)]
         random.shuffle(all_combos)
 
-        def make_distractor_from_combo(pron_pool_local):
-            # find a combo and pronoun pair that is valid
-            for tb, mb in all_combos:
-                bb = None
-                if tb == "present":
-                    bb = verb_entry.get("bab")
-                # choose a pronoun valid for this combo
-                candidates = pron_pool_local
+        def make_combo_form(tb, mb, fallback_forms_b=None, candidates=None):
+            bb = None
+            if tb == "present":
+                bb = verb_entry.get("bab")
+            _, fr = safe_conjugate(verb, tense=tb, bab_key=bb, mood=mb)
+            # choose pronoun from candidates if provided and valid for imperative
+            if candidates:
+                cands = candidates
                 if mb == "Imperative (أمر)":
-                    candidates = [p for p in pron_pool_local if 6 <= p <= 11]
-                if not candidates:
-                    continue
-                chosen_pron = candidates[0]
-                _, fr = safe_conjugate(verb, tense=tb, bab_key=bb, mood=mb)
-                return fr[chosen_pron], chosen_pron, (tb, mb)
-            # Fallback: if nothing valid (shouldn't happen), reuse a different pron with current target
-            if pron_pool_local:
-                p = pron_pool_local[0]
-                return forms_b[p], p, (tense_b, mood_b)
-            # Last resort, return the correct (will be deduped later by shuffling)
-            return correct, can, (tense_b, mood_b)
-
-        # d2: pick a different (tense/mood), different pronoun
-        d2, d2_pron, d2_combo = make_distractor_from_combo(pron_pool)
-        if d2_pron in pron_pool:
-            pron_pool.remove(d2_pron)
-
-        # Exclude the combo used for d2 to increase variety
-        all_combos = [c for c in all_combos if c != d2_combo]
-
-        # d3: another different (tense/mood), different pronoun
-        d3, d3_pron, _ = make_distractor_from_combo(pron_pool)
-        if d3_pron in pron_pool:
+                    cands = [p for p in cands if 6 <= p <= 11]
+                if cands:
+                    return fr[cands[0]]
+            # otherwise fall back to using the same pron if valid, else 0
             try:
-                pron_pool.remove(d3_pron)
-            except ValueError:
-                pass
+                if mb == "Imperative (أمر)" and not (6 <= pron_a <= 11):
+                    # pick a default imperative pronoun
+                    return fr[6]
+                return fr[pron_a]
+            except Exception:
+                return (fallback_forms_b or fr)[0]
+
+        options = []
+        if valid_for_target:
+            correct = forms_b[pron_a]
+            # d1: same target combo, different pronoun
+            if pron_pool:
+                d1 = forms_b[pron_pool.pop(0)]
+            else:
+                # fallback: another combo with pron_a
+                tb, mb = all_combos[0]
+                d1 = make_combo_form(tb, mb, fallback_forms_b=forms_b, candidates=pron_pool)
+
+            # d2: different combo
+            tb2, mb2 = all_combos[0]
+            d2 = make_combo_form(tb2, mb2, fallback_forms_b=forms_b, candidates=pron_pool)
+
+            # d3: if target is imperative include "None" as distractor, else another combo
+            if is_imp_target:
+                d3 = "None"
+            else:
+                tb3, mb3 = all_combos[1] if len(all_combos) > 1 else all_combos[0]
+                d3 = make_combo_form(tb3, mb3, fallback_forms_b=forms_b, candidates=pron_pool)
+        else:
+            # Target doesn't have a valid form for the same pronoun -> correct is "None"
+            correct = "None"
+            # d1: plausible target form (different pronoun)
+            if pron_pool:
+                d1 = forms_b[pron_pool.pop(0)]
+            else:
+                # If no pronoun available (edge), synthesize from a combo
+                tb, mb = all_combos[0]
+                d1 = make_combo_form(tb, mb, fallback_forms_b=forms_b, candidates=pron_pool)
+            # d2 & d3: other combos
+            tb2, mb2 = all_combos[0]
+            d2 = make_combo_form(tb2, mb2, fallback_forms_b=forms_b, candidates=pron_pool)
+            tb3, mb3 = all_combos[1] if len(all_combos) > 1 else all_combos[0]
+            d3 = make_combo_form(tb3, mb3, fallback_forms_b=forms_b, candidates=pron_pool)
 
         options = [correct, d1, d2, d3]
+        # Ensure uniqueness (rare case if underlying forms coincide); adjust by replacing duplicates with other combos
+        seen = set()
+        unique_opts = []
+        for opt in options:
+            if opt not in seen:
+                seen.add(opt)
+                unique_opts.append(opt)
+        while len(unique_opts) < 4:
+            # add more variety from remaining combos
+            if all_combos:
+                tb, mb = all_combos.pop()
+                unique_opts.append(make_combo_form(tb, mb, fallback_forms_b=forms_b, candidates=pron_pool))
+            else:
+                # last resort, append a fabricated distinct label
+                unique_opts.append(f"{verb}[x{len(unique_opts)}]")
+
         qtext = (
             f"If the base verb of {conj_a} were conjugated in\n"
             f"{tense_b.capitalize()}{' ' + mood_b if mood_b is not None else ''} (same pronoun)\n"
@@ -617,7 +638,7 @@ class QuizApp:
         )
         meta = f"{PRONOUNS[canon_pron(pron_a)][0]} ({PRONOUNS[canon_pron(pron_a)][1]}), base verb: {verb}"
 
-        return {"text": qtext, "meta": meta, "options": options, "correct": correct}
+        return {"text": qtext, "meta": meta, "options": unique_opts[:4], "correct": correct}
 
     def make_style_extra(self):
         """Extra challenge: match base verb given conjugated form among 4 verbs."""
