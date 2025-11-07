@@ -388,7 +388,7 @@ class QuizApp:
         verb_entry = random.choice(SAMPLE_VERBS)
         verb = verb_entry["verb"]
         tenses = ["present", "present", "past"]
-        # random.shuffle(tenses)
+        random.shuffle(tenses)
         tense = tenses[0]
         bab_key = None
         mood = None
