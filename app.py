@@ -136,7 +136,7 @@ class QuizApp:
             self.option_buttons.append(btn)
 
         # Start with scoring shown as disabled (greyed out)
-        self.status = tk.Label(master, text="Score: 0/0", fg="gray")
+        self.status = tk.Label(master, text="Score: 0 / 0", fg="gray")
         self.status.pack(pady=6)
 
         self.controls = tk.Frame(master)
@@ -145,7 +145,7 @@ class QuizApp:
         tk.Button(self.controls, text="Next", command=self.next_question).grid(row=0, column=0, padx=6)
         tk.Button(self.controls, text="Quit", command=master.quit).grid(row=0, column=1, padx=6)
         # scoring toggle button (starts disabled)
-        self.score_button = tk.Button(self.controls, text="🏆", command=self.toggle_scoring)
+        self.score_button = tk.Button(self.controls, text="🏆", command=self.toggle_scoring, height=2)
         self.score_button.grid(row=0, column=2, padx=6)
 
         # Font size selector: dropdown (readonly combobox)
@@ -173,9 +173,25 @@ class QuizApp:
         self.next_question()
 
     def update_status(self):
-        # Update the status text and color depending on whether scoring is enabled
-        self.status.config(text=f"Score: {self.score}/{self.total}")
-        self.status.config(fg="black" if self.scoring_enabled else "gray")
+        # Update the status text and color depending on whether scoring is enabled.
+        # When scoring is enabled show the score in white; when disabled set
+        # the text color to the window background so it visually deactivates
+        # (fallback to gray when background cannot be determined).
+        self.status.config(text=f"Score: {self.score} / {self.total}")
+        try:
+            master_bg = self.master.cget("bg")
+        except Exception:
+            master_bg = None
+
+        if self.scoring_enabled:
+            fg = "white"
+        else:
+            fg = master_bg if master_bg is not None else "gray"
+
+        try:
+            self.status.config(fg=fg)
+        except Exception:
+            pass
 
     def next_question(self):
         # pick a random style
@@ -301,13 +317,11 @@ class QuizApp:
             self.scoring_enabled = True
             self.score = 0
             self.total = 0
-            self.score_button.config(text="Disable Scoring")
         else:
             # disable scoring and reset
             self.scoring_enabled = False
             self.score = 0
             self.total = 0
-            self.score_button.config(text="Enable Scoring")
         self.update_status()
 
     def show_hint(self):
