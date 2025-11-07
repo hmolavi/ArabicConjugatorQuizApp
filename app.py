@@ -236,7 +236,8 @@ class QuizApp:
 
         for i, btn in enumerate(self.option_buttons):
             text = combined[i] if i < len(combined) else ""
-            btn.config(text=text, state=tk.NORMAL, bg=None)
+            # restore the clickable command and reset visual state (no emoji yet)
+            btn.config(text=text, state=tk.NORMAL, bg=None, command=(lambda i=i: self.check_answer(i)))
         # store for checking
         self.shown_options = combined
 
@@ -249,16 +250,44 @@ class QuizApp:
             if chosen_text == correct:
                 self.score += 1
 
-        if chosen_text == correct:
-            self.option_buttons[chosen_idx].config(bg="#a6f3a6")
-        else:
-            self.option_buttons[chosen_idx].config(bg="#f3a6a6")
-            for i, opt in enumerate(self.shown_options):
-                if opt == correct:
-                    self.option_buttons[i].config(bg="#a6f3a6")
-        # disable buttons until Next
-        for b in self.option_buttons:
-            b.config(state=tk.DISABLED)
+        # Provide emoji feedback inside button text (✅ correct, ❌ incorrect).
+        # We avoid relying on background color because some platforms/themes
+        # grey-out disabled buttons and hide the coloring. Instead we append
+        # emoji and replace each button's command with a no-op to lock clicks.
+        for i, btn in enumerate(self.option_buttons):
+            # base text for the option (already formatted for GUI)
+            try:
+                opt_text = self.shown_options[i]
+            except Exception:
+                opt_text = btn.cget("text")
+
+            if i == chosen_idx:
+                # the option the user picked
+                if opt_text == correct:
+                    display = f"{opt_text} ✅"
+                else:
+                    display = f"{opt_text} ❌"
+            elif opt_text == correct:
+                # the correct answer (if not chosen)
+                display = f"{opt_text} ✅"
+            else:
+                display = opt_text
+
+            try:
+                btn.config(text=display)
+            except Exception:
+                pass
+
+            # lock further clicks by replacing the command with a no-op. This
+            # preserves widget appearance across themes (vs disabling which
+            # often greys-out the widget and hides styling).
+            try:
+                btn.config(command=lambda: None)
+            except Exception:
+                try:
+                    btn.config(state=tk.DISABLED)
+                except Exception:
+                    pass
 
         self.update_status()
 
