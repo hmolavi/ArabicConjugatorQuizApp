@@ -208,7 +208,7 @@ class QuizApp:
         elif style == 4:
             q = self.make_style4()
         else:
-            q = self.make_style_extra()
+            q = self.make_style5()
 
         self.display_question(q)
 
@@ -458,7 +458,7 @@ class QuizApp:
         d3 = forms[pronouns[0]]
 
         options = [correct, d1, d2, d3]
-        qtext = f"Select the correct conjugation for {PRONOUNS[pron_index][0]} ({PRONOUNS[pron_index][1]})\nBase verb: {verb}"
+        qtext = f"Select the correct conjugation for {PRONOUNS[pron_index][0]} ({PRONOUNS[pron_index][1]})\nBase verb: {verb}\n"
         meta = f"{tense.capitalize()}{" "+mood if mood is not None else ''}"
         return {"text": qtext, "meta": meta, "options": options, "correct": correct}
 
@@ -497,7 +497,7 @@ class QuizApp:
             label = t if m is None else f"{t} - {m}"
             options.append(label)
 
-        qtext = f"Which tense/mood is this conjugated form?\n{conj}"
+        qtext = f"Which tense/mood is this conjugated form?\n{conj}\n"
         meta = f"Pronoun: {PRONOUNS[pron][0]} ({PRONOUNS[pron][1]}) Base verb: {verb}"
         correct_label = tense.capitalize() if mood is None else f"{tense.capitalize()} - {mood}"
         return {"text": qtext, "meta": meta, "options": options, "correct": correct_label}
@@ -690,11 +690,11 @@ class QuizApp:
         ]
         correct = f"{PRONOUNS[pron][1]} - ({PRONOUNS[pron][0]})"
 
-        qtext = f"Which pronoun corresponds to this conjugation?\n{conj}"
+        qtext = f"Which pronoun corresponds to this conjugation?\n{conj}\n"
         meta = f"Tense: {tense.capitalize()}{' ' + mood if mood is not None else ''}  Base verb: {verb}"
         return {"text": qtext, "meta": meta, "options": options, "correct": correct}
 
-    def make_style_extra(self):
+    def make_style5(self):
         """Extra challenge: match base verb given conjugated form among 4 verbs."""
         verbs = random.sample(SAMPLE_VERBS, 4)
         verb = verbs[0]["verb"]
@@ -716,7 +716,7 @@ class QuizApp:
             options.append(v["verb"])
 
         correct = verb
-        qtext = f"Which base verb produced this conjugation?\n{conj}"
+        qtext = f"Which base verb produced this conjugation?\n{conj}\n"
         meta = f"Pronoun: {PRONOUNS[pron][0]}  Tense: {tense}"
         return {"text": qtext, "meta": meta, "options": options, "correct": correct}
 
