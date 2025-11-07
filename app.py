@@ -400,6 +400,12 @@ class QuizApp:
             pronouns = [i for i in pronouns if 6 <= i <= 11]
         random.shuffle(pronouns)
         distractor_pronouns = pronouns[:3]
+        
+        # 7 and 10 cant be used together as distractors since they yield same form
+        while 7 in distractor_pronouns and 10 in distractor_pronouns:
+            random.shuffle(pronouns)
+            distractor_pronouns = pronouns[:3]
+
 
         # distractor 1: different mood/tense and different pronoun
         ot_tense = tenses[1]
