@@ -197,7 +197,7 @@ class QuizApp:
 
     def next_question(self):
         # pick a random style
-        style = 3  # random.choice([1, 2, 3, 4])
+        style = random.choice([1, 2, 3, 4, 5])
         self.current_style = style
         if style == 1:
             q = self.make_style1()
@@ -205,9 +205,10 @@ class QuizApp:
             q = self.make_style2()
         elif style == 3:
             q = self.make_style3()
+        elif style == 4:
+            q = self.make_style4()
         else:
             q = self.make_style_extra()
-        # question idea: conjugated verb, ask for pronoun (meta being the tense/mood)
 
         self.display_question(q)
 
@@ -406,9 +407,14 @@ class QuizApp:
 
         pron_index = 0
         if mood == "Imperative (أمر)":
-            pron_index = random.randrange(6) + 6
+            # choose an imperative pronoun index that actually appears in UNIQUE_PRONOUNS_IDX
+            # UNIQUE_PRONOUNS_IDX excludes duplicate indices (10), so avoid picking 10 here
+            possible_prons = [i for i in range(6, 12) if i != 10]
+            pron_index = random.choice(possible_prons)
         else:
-            pron_index = random.randrange(14)
+            # avoid duplicate indices 4 and 10 which are not present in UNIQUE_PRONOUNS_IDX
+            possible_prons = [i for i in range(14) if i not in (4, 10)]
+            pron_index = random.choice(possible_prons)
 
         correct = forms[pron_index]
 
@@ -629,7 +635,7 @@ class QuizApp:
                 unique_opts.append(make_combo_form(tb, mb, fallback_forms_b=forms_b, candidates=pron_pool))
             else:
                 # last resort, append a fabricated distinct label
-                unique_opts.append(f"{verb}[x{len(unique_opts)}]")
+                unique_opts.append(f"doodoo code 😭")
 
         qtext = (
             f"If the base verb of {conj_a} were conjugated in\n"
@@ -639,6 +645,54 @@ class QuizApp:
         meta = f"{PRONOUNS[canon_pron(pron_a)][0]} ({PRONOUNS[canon_pron(pron_a)][1]}), base verb: {verb}"
 
         return {"text": qtext, "meta": meta, "options": unique_opts[:4], "correct": correct}
+
+    def make_style4(self):
+        """Given conjugated verb, ask for pronoun (meta being the tense/mood)"""
+
+        # pick random verb, tense, mood
+        verb_entry = random.choice(SAMPLE_VERBS)
+        verb = verb_entry["verb"]
+        tense = random.choice(["past", "present"])
+        bab_key = None
+        mood = None
+        if tense == "present":
+            bab_key = verb_entry.get("bab")
+            mood = random.choice([m[0] for m in (ac.MOODS)])
+        _, forms = safe_conjugate(verb, tense=tense, bab_key=bab_key, mood=mood)
+
+        pron = 0
+        if mood == "Imperative (أمر)":
+            # choose an imperative pronoun index that actually appears in UNIQUE_PRONOUNS_IDX
+            # UNIQUE_PRONOUNS_IDX excludes duplicate indices (10), so avoid picking 10 here
+            possible_prons = [i for i in range(6, 12) if i != 10]
+            pron = random.choice(possible_prons)
+        else:
+            # avoid duplicate indices 4 and 10 which are not present in UNIQUE_PRONOUNS_IDX
+            possible_prons = [i for i in range(14) if i not in (4, 10)]
+            pron = random.choice(possible_prons)
+
+        conj = forms[pron]
+
+        pronouns_idx = UNIQUE_PRONOUNS_IDX.copy()
+        pronouns_idx.remove(pron)
+        random.shuffle(pronouns_idx)
+
+        # distractor pronouns -- idx
+        d1 = pronouns_idx[0]
+        d2 = pronouns_idx[1]
+        d3 = pronouns_idx[2]
+
+        options = [
+            f"{PRONOUNS[pron][1]} - ({PRONOUNS[pron][0]})",
+            f"{PRONOUNS[d1][1]} - ({PRONOUNS[d1][0]})",
+            f"{PRONOUNS[d2][1]} - ({PRONOUNS[d2][0]})",
+            f"{PRONOUNS[d3][1]} - ({PRONOUNS[d3][0]})",
+        ]
+        correct = f"{PRONOUNS[pron][1]} - ({PRONOUNS[pron][0]})"
+
+        qtext = f"Which pronoun corresponds to this conjugation?\n{conj}"
+        meta = f"Tense: {tense.capitalize()}{' ' + mood if mood is not None else ''}  Base verb: {verb}"
+        return {"text": qtext, "meta": meta, "options": options, "correct": correct}
 
     def make_style_extra(self):
         """Extra challenge: match base verb given conjugated form among 4 verbs."""
