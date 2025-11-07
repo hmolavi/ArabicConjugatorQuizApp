@@ -79,6 +79,7 @@ PRONOUNS = [
     ("1st pl", "نحن"),
 ]
 
+UNIQUE_PRONOUNS_IDX = [0, 1, 2, 3, 5, 6, 7, 8, 9, 11, 12, 13]  # excludes duplicates: 7=10, 1=4
 
 def safe_conjugate(verb, tense="past", bab_key=None, mood=None, reverse_input=False):
     """Wrapper that calls the package's conjugate_verb and returns (title, forms).
