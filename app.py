@@ -145,7 +145,7 @@ class QuizApp:
         tk.Button(self.controls, text="Next", command=self.next_question).grid(row=0, column=0, padx=6)
         tk.Button(self.controls, text="Quit", command=master.quit).grid(row=0, column=1, padx=6)
         # scoring toggle button (starts disabled)
-        self.score_button = tk.Button(self.controls, text="Enable Scoring", command=self.toggle_scoring)
+        self.score_button = tk.Button(self.controls, text="🏆", command=self.toggle_scoring)
         self.score_button.grid(row=0, column=2, padx=6)
 
         # Font size selector: dropdown (readonly combobox)
@@ -518,10 +518,10 @@ class QuizApp:
         options = [correct, d1, d2, d3]
         qtext = f"If the base verb of {conj_a} were conjugated in\n{tense_b.capitalize()}{" "+mood_b if mood_b is not None else ''} {PRONOUNS[pron_a][0]}\nwhich one would it be?"
         meta = f"Base verb: {verb}"
-        
-        if pron_a == 0: # lolz
+
+        if pron_a == 0:  # lolz
             meta = "C'mon, you should know this one!"
-        
+
         return {"text": qtext, "meta": meta, "options": options, "correct": correct}
 
     def make_style_extra(self):
