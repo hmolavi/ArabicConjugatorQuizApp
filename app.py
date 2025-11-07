@@ -480,7 +480,7 @@ class QuizApp:
 
         qtext = f"Which tense/mood is this conjugated form?\n{conj}"
         meta = f"Pronoun: {PRONOUNS[pron][0]} ({PRONOUNS[pron][1]}) Base verb: {verb}"
-        correct_label = tense if mood is None else f"{tense} - {mood}"
+        correct_label = tense.capitalize() if mood is None else f"{tense.capitalize()} - {mood}"
         return {"text": qtext, "meta": meta, "options": options, "correct": correct_label}
 
     def make_style3(self):
