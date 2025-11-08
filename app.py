@@ -270,10 +270,8 @@ class QuizApp:
             if chosen_text == correct:
                 self.score += 1
 
-        # Provide text feedback inside button text ([CORRECT], [WRONG]).
-        # We avoid relying on background color because some platforms/themes
-        # grey-out disabled buttons and hide the coloring. Instead we append
-        # text markers and replace each button's command with a no-op to lock clicks.
+        # Provide visual feedback using background colors and optional short symbols.
+        # Green background for correct answers, red for incorrect, with simple symbols.
         for i, btn in enumerate(self.option_buttons):
             # base text for the option (already formatted for GUI)
             try:
@@ -281,26 +279,28 @@ class QuizApp:
             except Exception:
                 opt_text = btn.cget("text")
 
+            display = opt_text
+            bg_color = None
+            
             if i == chosen_idx:
                 # the option the user picked
                 if opt_text == correct:
-                    display = f"{opt_text} [CORRECT]"
+                    display = f"{opt_text} +"
+                    bg_color = "#90EE90"  # light green
                 else:
-                    display = f"{opt_text} [WRONG]"
+                    display = f"{opt_text} -"
+                    bg_color = "#FFB6C6"  # light red/pink
             elif opt_text == correct:
                 # the correct answer (if not chosen)
-                display = f"{opt_text} [CORRECT]"
-            else:
-                display = opt_text
+                display = f"{opt_text} +"
+                bg_color = "#90EE90"  # light green
 
             try:
-                btn.config(text=display)
+                btn.config(text=display, bg=bg_color)
             except Exception:
                 pass
 
-            # lock further clicks by replacing the command with a no-op. This
-            # preserves widget appearance across themes (vs disabling which
-            # often greys-out the widget and hides styling).
+            # lock further clicks by replacing the command with a no-op
             try:
                 btn.config(command=lambda: None)
             except Exception:
