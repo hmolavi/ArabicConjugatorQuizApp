@@ -293,7 +293,7 @@ class QuizApp:
             bg_color = None
 
             def append_symbol(text, correct_ans):
-                """Helper to append a symbol to text if not already present."""
+                """Helper to append a symbol to text if only in macOS."""
 
                 if not is_system_macos():
                     return text
