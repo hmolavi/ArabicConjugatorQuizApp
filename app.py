@@ -150,7 +150,8 @@ class QuizApp:
         tk.Button(self.controls, text="Next", command=self.next_question).grid(row=0, column=0, padx=6)
         tk.Button(self.controls, text="Quit", command=master.quit).grid(row=0, column=1, padx=6)
         # scoring toggle button (starts disabled)
-        self.score_button = tk.Button(self.controls, text="Score", command=self.toggle_scoring, height=2)
+        score_btn_text = "🏆" if is_system_macos() else "Score"
+        self.score_button = tk.Button(self.controls, text=score_btn_text, command=self.toggle_scoring, height=2)
         self.score_button.grid(row=0, column=2, padx=6)
 
         # Font size selector: dropdown (readonly combobox)
