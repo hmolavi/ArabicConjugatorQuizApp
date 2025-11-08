@@ -19,9 +19,11 @@ from arabic_reshaper import ArabicReshaper
 from bidi.algorithm import get_display
 import arabic_conjugator_hmolavi as ac
 
+
 def is_system_macos():
     """Check if the current operating system is macOS."""
     return platform.system() == "Darwin"
+
 
 def should_reverse_gui_text():
     """
@@ -147,8 +149,10 @@ class QuizApp:
         self.controls = tk.Frame(master)
         self.controls.pack(pady=(6, 12))
 
-        tk.Button(self.controls, text="Next", command=self.next_question).grid(row=0, column=0, padx=6)
-        tk.Button(self.controls, text="Quit", command=master.quit).grid(row=0, column=1, padx=6)
+        tk.Button(self.controls, text="Next", command=self.on_next_pressed).grid(row=0, column=0, padx=6)
+        # Test button replaces Quit. Starts a timed test session of fixed length (TEST_LENGTH)
+        self.test_button = tk.Button(self.controls, text="Test", command=self.start_test)
+        self.test_button.grid(row=0, column=1, padx=6)
         # scoring toggle button (starts disabled)
         score_btn_text = "🏆" if is_system_macos() else "Score"
         self.score_button = tk.Button(self.controls, text=score_btn_text, command=self.toggle_scoring, height=2)
@@ -178,18 +182,306 @@ class QuizApp:
 
         self.next_question()
 
+        # --- Test mode state ---
+        self.test_mode = False  # True while answering timed test questions
+        self.review_mode = False  # True after test is finished and user is browsing answers
+        self.TEST_LENGTH = 15  # Global fixed number of questions in a test
+        self.test_index = 0  # 0-based index of current test question
+        self.test_records = []  # List of dict per question: {q, chosen_idx, correct_idx, skipped, options}
+        self.test_start_time = None
+        self.stopwatch_id = None  # after() id for timer updates
+        self.stopwatch_label = tk.Label(self.master, text="", font=(None, 10))
+        self.stopwatch_label.place(relx=1.0, rely=1.0, anchor="se", x=-6, y=-6)  # bottom-right corner
+        self.final_score_label = tk.Label(self.master, text="", font=(None, 12))
+
+    # ---------------- Test Mode Functions -----------------
+    def start_test(self):
+        """Initialize a new test session, disabling the Test button until completion."""
+        if self.test_mode or self.review_mode:
+            return
+        self.test_mode = True
+        self.review_mode = False
+        self.test_index = 0
+        self.test_records = []
+        self.score = 0
+        self.total = 0
+        self.final_score_label.config(text="")
+        # disable scoring (test handles correctness separately)
+        self.scoring_enabled = False
+        self.update_status()
+        # Disable the test button during run
+        try:
+            self.test_button.config(state=tk.DISABLED)
+        except Exception:
+            pass
+        # Disable the score toggle during test
+        try:
+            self.score_button.config(state=tk.DISABLED)
+        except Exception:
+            pass
+        # start stopwatch
+        self.test_start_time = self._now_seconds()
+        self._update_stopwatch()
+        # move to first test question
+        self.next_question()
+
+    def exit_test(self):
+        """Exit review mode and reset UI back to normal quiz state."""
+        self.test_mode = False
+        self.review_mode = False
+        self.test_index = 0
+        self.test_records = []
+        self.final_score_label.config(text="")
+        # re-enable test button
+        try:
+            self.test_button.config(text="Test", state=tk.NORMAL, command=self.start_test)
+        except Exception:
+            pass
+        # re-enable score button
+        try:
+            self.score_button.config(state=tk.NORMAL)
+        except Exception:
+            pass
+        # remove arrows
+        self._destroy_review_nav()
+        # reset status
+        self.update_status()
+        # clear stopwatch updates and text
+        self._update_stopwatch()
+        # show a normal question again
+        self.next_question()
+
+    def _now_seconds(self):
+        import time
+
+        return time.time()
+
+    def _elapsed_seconds(self):
+        if self.test_start_time is None:
+            return 0
+        return int(self._now_seconds() - self.test_start_time)
+
+    def _format_elapsed(self, secs):
+        m = secs // 60
+        s = secs % 60
+        return f"{m:02d}:{s:02d}"
+
+    def _update_stopwatch(self):
+        if self.test_mode:
+            elapsed = self._format_elapsed(self._elapsed_seconds())
+            try:
+                self.stopwatch_label.config(text=elapsed)
+            except Exception:
+                pass
+            self.stopwatch_id = self.master.after(1000, self._update_stopwatch)
+        else:
+            # stop updates; keep text during review, clear otherwise
+            if self.stopwatch_id:
+                try:
+                    self.master.after_cancel(self.stopwatch_id)
+                except Exception:
+                    pass
+                self.stopwatch_id = None
+            if not self.review_mode:
+                try:
+                    self.stopwatch_label.config(text="")
+                except Exception:
+                    pass
+
+    def on_next_pressed(self):
+        """Handler for Next button: skip or advance depending on mode."""
+        if self.test_mode:
+            # record skip for current question (no answer yet)
+            self._record_test_answer(skipped=True)
+            self._advance_test_or_finish()
+        elif self.review_mode:
+            # In review, next moves forward like right arrow
+            self._review_next()
+        else:
+            self.next_question()
+
+    def _record_test_answer(self, chosen_idx=None, skipped=False):
+        """Store current question details."""
+        rec = {
+            "q": getattr(self, "current_question_dict", None),
+            "chosen_idx": chosen_idx,
+            "correct_idx": self.correct_index,
+            "skipped": skipped,
+            "options": list(getattr(self, "shown_options", [])),
+        }
+        self.test_records.append(rec)
+        if not skipped and chosen_idx is not None and chosen_idx == self.correct_index:
+            self.score += 1
+        self.total += 1
+
+    def _advance_test_or_finish(self):
+        self.test_index += 1
+        if self.test_index >= self.TEST_LENGTH:
+            self._finish_test()
+        else:
+            self.next_question()
+        self.update_status()
+
+    def _finish_test(self):
+        # stop timing and freeze stopwatch in review
+        self.test_mode = False
+        self.review_mode = True
+        try:
+            self.stopwatch_label.config(text=self._format_elapsed(self._elapsed_seconds()))
+        except Exception:
+            pass
+        self._update_stopwatch()
+        # enable test button as Exit
+        try:
+            self.test_button.config(text="Exit", state=tk.NORMAL, command=self.exit_test)
+        except Exception:
+            pass
+        # show review navigation arrows
+        self._create_review_nav()
+        # display first record with feedback
+        self._show_review_question(0)
+        # show final score label
+        try:
+            self.final_score_label.config(text=f"Score: {self.score} / {self.TEST_LENGTH}")
+            self.final_score_label.pack(after=self.status, pady=2)
+        except Exception:
+            pass
+        self.update_status()
+
+    def _create_review_nav(self):
+        self.review_nav_frame = tk.Frame(self.master)
+        self.review_nav_frame.pack(pady=4)
+        self.left_btn = tk.Button(self.review_nav_frame, text="←", width=4, command=self._review_prev)
+        self.left_btn.grid(row=0, column=0, padx=4)
+        self.right_btn = tk.Button(self.review_nav_frame, text="→", width=4, command=self._review_next)
+        self.right_btn.grid(row=0, column=1, padx=4)
+        self._update_review_nav_buttons()
+
+    def _destroy_review_nav(self):
+        for attr in ["review_nav_frame", "left_btn", "right_btn"]:
+            if hasattr(self, attr):
+                try:
+                    getattr(self, attr).destroy()
+                except Exception:
+                    pass
+                delattr(self, attr)
+
+    def _update_review_nav_buttons(self):
+        if not self.review_mode:
+            return
+        idx = getattr(self, "review_pointer", 0)
+        try:
+            self.left_btn.config(state=(tk.NORMAL if idx > 0 else tk.DISABLED))
+        except Exception:
+            pass
+        try:
+            self.right_btn.config(state=(tk.NORMAL if idx < len(self.test_records) - 1 else tk.DISABLED))
+        except Exception:
+            pass
+
+    def _review_prev(self):
+        if not self.review_mode:
+            return
+        self.review_pointer = max(0, getattr(self, "review_pointer", 0) - 1)
+        self._show_review_question(self.review_pointer)
+
+    def _review_next(self):
+        if not self.review_mode:
+            return
+        self.review_pointer = min(len(self.test_records) - 1, getattr(self, "review_pointer", 0) + 1)
+        self._show_review_question(self.review_pointer)
+
+    def _show_review_question(self, idx):
+        if not (0 <= idx < len(self.test_records)):
+            return
+        rec = self.test_records[idx]
+        self.review_pointer = idx
+        qdict = rec.get("q") or {}
+        # display question text/meta
+        self.display_question(qdict)
+        # restore options then apply feedback styling like normal quiz
+        self.shown_options = rec.get("options", [])
+        self.correct_index = rec.get("correct_idx")
+        chosen = rec.get("chosen_idx")
+        if chosen is not None and not rec.get("skipped"):
+            self._apply_feedback_visuals(chosen, self.correct_index)
+        else:
+            # show correct answer only, but ensure all buttons show stored option text
+            if self.correct_index is not None:
+                for i, btn in enumerate(self.option_buttons):
+                    opt_text = self.shown_options[i]
+                    if i == self.correct_index:
+                        display = opt_text + (" ✅" if is_system_macos() else "")
+                        try:
+                            btn.config(text=display, bg="#90EE90", activebackground="#90EE90")
+                        except Exception:
+                            pass
+                    else:
+                        try:
+                            btn.config(text=opt_text, bg=self.master.cget("bg"))
+                        except Exception:
+                            pass
+        # disable interactive clicking in review
+        for btn in self.option_buttons:
+            try:
+                btn.config(command=lambda: None)
+            except Exception:
+                pass
+        self._update_review_nav_buttons()
+        self.update_status()
+
+    def _apply_feedback_visuals(self, chosen_idx, correct_idx):
+        for i, btn in enumerate(self.option_buttons):
+            opt_text = self.shown_options[i]
+            display = opt_text
+            bg_color = self.master.cget("bg")
+
+            def append_symbol(text, correct_ans):
+                if not is_system_macos():
+                    return text
+                return f"{text} {'✅' if correct_ans else '❌'}"
+
+            if i == chosen_idx:
+                if i == correct_idx:
+                    display = append_symbol(opt_text, True)
+                    bg_color = "#90EE90"
+                else:
+                    display = append_symbol(opt_text, False)
+                    bg_color = "#FFB6C6"
+            elif i == correct_idx:
+                display = append_symbol(opt_text, True)
+                bg_color = "#90EE90"
+            try:
+                btn.config(text=display, bg=bg_color, activebackground=bg_color)
+            except Exception:
+                pass
+            try:
+                btn.config(command=lambda: None)
+            except Exception:
+                pass
+
     def update_status(self):
-        # Update the status text and color depending on whether scoring is enabled.
-        # When scoring is enabled show the score in white; when disabled set
-        # the text color to the window background so it visually deactivates
-        # (fallback to gray when background cannot be determined).
-        self.status.config(text=f"Score: {self.score} / {self.total}")
+        # In test mode / review mode show question counter instead of score until finished.
+        if self.test_mode:
+            self.status.config(text=f"Question {self.test_index + 1} / {self.TEST_LENGTH}")
+        elif self.review_mode:
+            idx = getattr(self, "review_pointer", 0)
+            base = f"Question {idx + 1} / {self.TEST_LENGTH}"
+            try:
+                rec = self.test_records[idx]
+                if rec.get("skipped"):
+                    base += " (skipped)"
+            except Exception:
+                pass
+            self.status.config(text=base)
+        else:
+            self.status.config(text=f"Score: {self.score} / {self.total}")
         try:
             master_bg = self.master.cget("bg")
         except Exception:
             master_bg = None
 
-        if self.scoring_enabled:
+        if self.scoring_enabled or self.review_mode or self.test_mode:
             fg = "white"
         else:
             fg = master_bg if master_bg is not None else "gray"
@@ -201,8 +493,7 @@ class QuizApp:
 
     def next_question(self):
         self.reset_btn_colors()
-
-        # pick a random style
+        # pick a random style (keep deterministic variety in test mode as well)
         style = random.choice([1, 2, 3, 4, 5])
         self.current_style = style
         if style == 1:
@@ -215,7 +506,8 @@ class QuizApp:
             q = self.make_style4()
         else:
             q = self.make_style5()
-
+        # store raw dict for test recording
+        self.current_question_dict = q
         self.display_question(q)
 
     def display_question(self, q):
@@ -275,6 +567,12 @@ class QuizApp:
                 pass
 
     def check_answer(self, chosen_idx):
+        # In test mode, record answer and advance immediately without visual feedback
+        if self.test_mode:
+            self._record_test_answer(chosen_idx=chosen_idx, skipped=False)
+            self._advance_test_or_finish()
+            return
+
         chosen_text = self.shown_options[chosen_idx]
         correct = self.current_answer
         # Only update score/total when scoring is enabled. Always show feedback.
@@ -283,58 +581,8 @@ class QuizApp:
             if chosen_text == correct:
                 self.score += 1
 
-        for i, btn in enumerate(self.option_buttons):
-            # base text for the option (already formatted for GUI)
-            try:
-                opt_text = self.shown_options[i]
-            except Exception:
-                opt_text = btn.cget("text")
-
-            display = opt_text
-            bg_color = None
-
-            def append_symbol(text, correct_ans):
-                """Helper to append a symbol to text if only in macOS."""
-
-                if not is_system_macos():
-                    return text
-
-                if correct_ans:
-                    return f"{text} ✅"
-                else:
-                    return f"{text} ❌"
-
-            if i == chosen_idx:
-                # the option the user picked
-                if opt_text == correct:
-                    display = append_symbol(opt_text, True)
-                    bg_color = "#90EE90"  # light green
-                else:
-                    display = append_symbol(opt_text, False)
-                    bg_color = "#FFB6C6"  # light red/pink
-            elif opt_text == correct:
-                # the correct answer (if not chosen)
-                display = append_symbol(opt_text, True)
-                bg_color = "#90EE90"  # light green
-            else:
-                bg_color = self.master.cget("bg")
-
-            try:
-                btn.config(text=display, bg=bg_color, activebackground=bg_color)
-            except Exception:
-                pass
-
-            # lock further clicks by replacing the command with a no-op. This
-            # preserves widget appearance across themes (vs disabling which
-            # often greys-out the widget and hides styling).
-            try:
-                btn.config(command=lambda: None)
-            except Exception:
-                try:
-                    btn.config(state=tk.DISABLED)
-                except Exception:
-                    pass
-
+        # apply feedback visuals
+        self._apply_feedback_visuals(chosen_idx, self.correct_index)
         self.update_status()
 
     def toggle_scoring(self):
