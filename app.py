@@ -19,6 +19,9 @@ from arabic_reshaper import ArabicReshaper
 from bidi.algorithm import get_display
 import arabic_conjugator_hmolavi as ac
 
+def is_system_macos():
+    """Check if the current operating system is macOS."""
+    return platform.system() == "Darwin"
 
 def should_reverse_gui_text():
     """
@@ -196,6 +199,8 @@ class QuizApp:
             pass
 
     def next_question(self):
+        self.reset_btn_colors()
+
         # pick a random style
         style = random.choice([1, 2, 3, 4, 5])
         self.current_style = style
@@ -261,6 +266,13 @@ class QuizApp:
         # store for checking
         self.shown_options = combined
 
+    def reset_btn_colors(self):
+        for i, btn in enumerate(self.option_buttons):
+            try:
+                btn.config(bg=self.master.cget("bg"), activebackground="#ececec")
+            except Exception:
+                pass
+
     def check_answer(self, chosen_idx):
         chosen_text = self.shown_options[chosen_idx]
         correct = self.current_answer
@@ -270,8 +282,6 @@ class QuizApp:
             if chosen_text == correct:
                 self.score += 1
 
-        # Provide visual feedback using background colors and optional short symbols.
-        # Green background for correct answers, red for incorrect, with simple symbols.
         for i, btn in enumerate(self.option_buttons):
             # base text for the option (already formatted for GUI)
             try:
@@ -281,26 +291,41 @@ class QuizApp:
 
             display = opt_text
             bg_color = None
-            
+
+            def append_symbol(text, correct_ans):
+                """Helper to append a symbol to text if not already present."""
+
+                if not is_system_macos():
+                    return text
+
+                if correct_ans:
+                    return f"{text} ✅"
+                else:
+                    return f"{text} ❌"
+
             if i == chosen_idx:
                 # the option the user picked
                 if opt_text == correct:
-                    display = f"{opt_text} +"
+                    display = append_symbol(opt_text, True)
                     bg_color = "#90EE90"  # light green
                 else:
-                    display = f"{opt_text} -"
+                    display = append_symbol(opt_text, False)
                     bg_color = "#FFB6C6"  # light red/pink
             elif opt_text == correct:
                 # the correct answer (if not chosen)
-                display = f"{opt_text} +"
+                display = append_symbol(opt_text, True)
                 bg_color = "#90EE90"  # light green
+            else:
+                bg_color = self.master.cget("bg")
 
             try:
-                btn.config(text=display, bg=bg_color)
+                btn.config(text=display, bg=bg_color, activebackground=bg_color)
             except Exception:
                 pass
 
-            # lock further clicks by replacing the command with a no-op
+            # lock further clicks by replacing the command with a no-op. This
+            # preserves widget appearance across themes (vs disabling which
+            # often greys-out the widget and hides styling).
             try:
                 btn.config(command=lambda: None)
             except Exception:
