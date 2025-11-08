@@ -147,7 +147,7 @@ class QuizApp:
         tk.Button(self.controls, text="Next", command=self.next_question).grid(row=0, column=0, padx=6)
         tk.Button(self.controls, text="Quit", command=master.quit).grid(row=0, column=1, padx=6)
         # scoring toggle button (starts disabled)
-        self.score_button = tk.Button(self.controls, text="🏆", command=self.toggle_scoring, height=2)
+        self.score_button = tk.Button(self.controls, text="Score", command=self.toggle_scoring, height=2)
         self.score_button.grid(row=0, column=2, padx=6)
 
         # Font size selector: dropdown (readonly combobox)
@@ -270,10 +270,10 @@ class QuizApp:
             if chosen_text == correct:
                 self.score += 1
 
-        # Provide emoji feedback inside button text (✅ correct, ❌ incorrect).
+        # Provide text feedback inside button text ([CORRECT], [WRONG]).
         # We avoid relying on background color because some platforms/themes
         # grey-out disabled buttons and hide the coloring. Instead we append
-        # emoji and replace each button's command with a no-op to lock clicks.
+        # text markers and replace each button's command with a no-op to lock clicks.
         for i, btn in enumerate(self.option_buttons):
             # base text for the option (already formatted for GUI)
             try:
@@ -284,12 +284,12 @@ class QuizApp:
             if i == chosen_idx:
                 # the option the user picked
                 if opt_text == correct:
-                    display = f"{opt_text} ✅"
+                    display = f"{opt_text} [CORRECT]"
                 else:
-                    display = f"{opt_text} ❌"
+                    display = f"{opt_text} [WRONG]"
             elif opt_text == correct:
                 # the correct answer (if not chosen)
-                display = f"{opt_text} ✅"
+                display = f"{opt_text} [CORRECT]"
             else:
                 display = opt_text
 
