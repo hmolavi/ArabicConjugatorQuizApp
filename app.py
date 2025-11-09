@@ -122,7 +122,7 @@ class QuizApp:
         self.question_frame = tk.Frame(master)
         self.question_frame.pack(pady=10)
 
-        self.q_text = tk.Label(self.question_frame, text="", font=(None, 14), wraplength=500, justify="center")
+        self.q_text = tk.Label(self.question_frame, text="", font=(None, 14), wraplength=1500, justify="center")
         self.q_text.pack()
 
         # Meta/hint: create the meta label but don't show it by default. A hint button will occupy
