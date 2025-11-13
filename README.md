@@ -8,8 +8,7 @@ A small Tkinter-based multiple-choice quiz for practicing Arabic verb conjugatio
 
 <div align="center">
 
-_GIF to be inserted_
-<!-- ![example](/assets/example.gif) -->
+![example](/assets/example.gif)
 
 </div>
 
